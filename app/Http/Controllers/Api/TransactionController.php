@@ -37,15 +37,15 @@ class TransactionController extends BaseController
             return $this->sendValidationError($validator->errors());
         }
 
-        // Check business access (owner or staff)
-        $hasAccess = BusinessUser::where(Columns::business_id, $request->business_id)
-            ->where(Columns::user_id, Auth::id())
-            ->exists();
+        // // Check business access (owner or staff)
+        // $hasAccess = BusinessUser::where(Columns::business_id, $request->business_id)
+        //     ->where(Columns::user_id, Auth::id())
+        //     ->exists();
 
-        if (!$hasAccess) {
-            $this->addFailResultKeyValue(Keys::ERROR, Messages::UNAUTHORIZED_USER);
-            return $this->sendFailResult();
-        }
+        // if (!$hasAccess) {
+        //     $this->addFailResultKeyValue(Keys::ERROR, Messages::UNAUTHORIZED_USER);
+        //     return $this->sendFailResult();
+        // }
 
         $query = Transaction::where(Columns::business_id, $request->business_id)
             ->orderByDesc(Columns::transaction_date);
@@ -129,15 +129,15 @@ class TransactionController extends BaseController
             return $this->sendValidationError($validator->errors());
         }
 
-        // Business access check
-        $hasAccess = BusinessUser::where(Columns::business_id, $request->business_id)
-            ->where(Columns::user_id, Auth::id())
-            ->exists();
+        // // Business access check
+        // $hasAccess = BusinessUser::where(Columns::business_id, $request->business_id)
+        //     ->where(Columns::user_id, Auth::id())
+        //     ->exists();
 
-        if (!$hasAccess) {
-            $this->addFailResultKeyValue(Keys::ERROR, Messages::UNAUTHORIZED_USER);
-            return $this->sendFailResult();
-        }
+        // if (!$hasAccess) {
+        //     $this->addFailResultKeyValue(Keys::ERROR, Messages::UNAUTHORIZED_USER);
+        //     return $this->sendFailResult();
+        // }
 
         // Validate customer belongs to business
         $customer = Customer::where(Columns::id, $request->customer_id)
@@ -176,15 +176,15 @@ class TransactionController extends BaseController
             return $this->sendFailResult();
         }
 
-        // Access check
-        $hasAccess = BusinessUser::where(Columns::business_id, $transaction->business_id)
-            ->where(Columns::user_id, Auth::id())
-            ->exists();
+        // // Access check
+        // $hasAccess = BusinessUser::where(Columns::business_id, $transaction->business_id)
+        //     ->where(Columns::user_id, Auth::id())
+        //     ->exists();
 
-        if (!$hasAccess) {
-            $this->addFailResultKeyValue(Keys::ERROR, Messages::UNAUTHORIZED_USER);
-            return $this->sendFailResult();
-        }
+        // if (!$hasAccess) {
+        //     $this->addFailResultKeyValue(Keys::ERROR, Messages::UNAUTHORIZED_USER);
+        //     return $this->sendFailResult();
+        // }
 
         $this->addSuccessResultKeyValue(Keys::DATA, $transaction);
         return $this->sendSuccessResult();
@@ -202,15 +202,15 @@ class TransactionController extends BaseController
             return $this->sendFailResult();
         }
 
-        // Access check
-        $hasAccess = BusinessUser::where(Columns::business_id, $transaction->business_id)
-            ->where(Columns::user_id, Auth::id())
-            ->exists();
+        // // Access check
+        // $hasAccess = BusinessUser::where(Columns::business_id, $transaction->business_id)
+        //     ->where(Columns::user_id, Auth::id())
+        //     ->exists();
 
-        if (!$hasAccess) {
-            $this->addFailResultKeyValue(Keys::ERROR, Messages::UNAUTHORIZED_USER);
-            return $this->sendFailResult();
-        }
+        // if (!$hasAccess) {
+        //     $this->addFailResultKeyValue(Keys::ERROR, Messages::UNAUTHORIZED_USER);
+        //     return $this->sendFailResult();
+        // }
 
         $rules = [
             Columns::transaction_type => 'required|in:' . Enums::INCOME . ',' . Enums::EXPENSE,
@@ -250,15 +250,15 @@ class TransactionController extends BaseController
             return $this->sendFailResult();
         }
 
-        // Access check
-        $hasAccess = BusinessUser::where(Columns::business_id, $transaction->business_id)
-            ->where(Columns::user_id, Auth::id())
-            ->exists();
+        // // Access check
+        // $hasAccess = BusinessUser::where(Columns::business_id, $transaction->business_id)
+        //     ->where(Columns::user_id, Auth::id())
+        //     ->exists();
 
-        if (!$hasAccess) {
-            $this->addFailResultKeyValue(Keys::ERROR, Messages::UNAUTHORIZED_USER);
-            return $this->sendFailResult();
-        }
+        // if (!$hasAccess) {
+        //     $this->addFailResultKeyValue(Keys::ERROR, Messages::UNAUTHORIZED_USER);
+        //     return $this->sendFailResult();
+        // }
 
         $transaction->delete();
 
