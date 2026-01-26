@@ -22,12 +22,15 @@ class TransactionController extends BaseController
      */
     public function index(Request $request)
     {
+        /* -------------------------------------------------
+         | Validation
+         |-------------------------------------------------*/
         $rules = [
             Columns::business_id => 'required|integer',
             Columns::customer_id => 'nullable|integer',
             Columns::transaction_type => 'nullable|in:' . Enums::INCOME . ',' . Enums::EXPENSE,
-            "from_date" => 'nullable|date',
-            "to_date" => 'nullable|date|after_or_equal:from_date',
+            'from_date' => 'nullable|date',
+            'to_date' => 'nullable|date|after_or_equal:from_date',
             Columns::page => 'nullable|integer|min:0',
             Columns::limit => 'nullable|integer|min:1|max:100',
         ];
@@ -37,44 +40,86 @@ class TransactionController extends BaseController
             return $this->sendValidationError($validator->errors());
         }
 
-        // // Check business access (owner or staff)
-        // $hasAccess = BusinessUser::where(Columns::business_id, $request->business_id)
-        //     ->where(Columns::user_id, Auth::id())
-        //     ->exists();
+        /* -------------------------------------------------
+         | Base Query (Business only)
+         |-------------------------------------------------*/
+        $baseQuery = Transaction::where(
+            Columns::business_id,
+            $request->business_id
+        );
 
-        // if (!$hasAccess) {
-        //     $this->addFailResultKeyValue(Keys::ERROR, Messages::UNAUTHORIZED_USER);
-        //     return $this->sendFailResult();
-        // }
+        /* -------------------------------------------------
+         | Overall Counts (NO filters)
+         |-------------------------------------------------*/
+        $overallCounts = [
+            'total_income' => (clone $baseQuery)
+                ->where(Columns::transaction_type, Enums::INCOME)
+                ->sum(Columns::amount),
 
-        $query = Transaction::where(Columns::business_id, $request->business_id)
-            ->orderByDesc(Columns::transaction_date);
+            'total_expense' => (clone $baseQuery)
+                ->where(Columns::transaction_type, Enums::EXPENSE)
+                ->sum(Columns::amount),
+        ];
 
-        // Customer wise
+        /* -------------------------------------------------
+         | Filtered Query (used for list + filtered counts)
+         |-------------------------------------------------*/
+        $filteredQuery = clone $baseQuery;
+
         if ($request->filled(Columns::customer_id)) {
-            $query->where(Columns::customer_id, $request->customer_id);
+            $filteredQuery->where(
+                Columns::customer_id,
+                $request->customer_id
+            );
         }
 
-        // Type wise
         if ($request->filled(Columns::transaction_type)) {
-            $query->where(Columns::transaction_type, $request->transaction_type);
+            $filteredQuery->where(
+                Columns::transaction_type,
+                $request->transaction_type
+            );
         }
 
-        // Date wise
-        if ($request->filled("from_date")) {
-            $query->whereDate(Columns::transaction_date, '>=', $request->from_date);
+        if ($request->filled('from_date')) {
+            $filteredQuery->whereDate(
+                Columns::transaction_date,
+                '>=',
+                $request->from_date
+            );
         }
 
-        if ($request->filled("to_date")) {
-            $query->whereDate(Columns::transaction_date, '<=', $request->to_date);
+        if ($request->filled('to_date')) {
+            $filteredQuery->whereDate(
+                Columns::transaction_date,
+                '<=',
+                $request->to_date
+            );
         }
 
-        // Pagination
-        if ($request->input(Columns::page) == 0) {
-            $transactions = $query->get();
+        /* -------------------------------------------------
+         | Filtered Counts
+         |-------------------------------------------------*/
+        $filteredCounts = [
+            'total_income' => (clone $filteredQuery)
+                ->where(Columns::transaction_type, Enums::INCOME)
+                ->sum(Columns::amount),
+
+            'total_expense' => (clone $filteredQuery)
+                ->where(Columns::transaction_type, Enums::EXPENSE)
+                ->sum(Columns::amount),
+        ];
+
+        /* -------------------------------------------------
+         | Transactions List (with pagination)
+         |-------------------------------------------------*/
+        $filteredQuery->orderByDesc(Columns::transaction_date);
+
+        if ((int) $request->input(Columns::page, 1) === 0) {
+            $transactions = $filteredQuery->get();
         } else {
-            $limit = $request->input(Columns::limit, 10);
-            $transactions = $query->paginate($limit);
+            $transactions = $filteredQuery->paginate(
+                $request->input(Columns::limit, 10)
+            );
         }
 
         if ($transactions->isEmpty()) {
@@ -82,6 +127,9 @@ class TransactionController extends BaseController
             return $this->sendFailResult();
         }
 
+        /* -------------------------------------------------
+         | Transform Data
+         |-------------------------------------------------*/
         $transformed = $transactions->map(function ($txn) {
             return [
                 Columns::id => $txn->id,
@@ -97,9 +145,14 @@ class TransactionController extends BaseController
             ];
         });
 
+        /* -------------------------------------------------
+         | Response
+         |-------------------------------------------------*/
         $this->addSuccessResultKeyValue(Keys::MESSAGE, Messages::DATA_FOUND_SUCCESSFULLY);
+        $this->addSuccessResultKeyValue('overall_counts', $overallCounts);
+        $this->addSuccessResultKeyValue('filtered_counts', $filteredCounts);
 
-        if ($request->input(Columns::page) == 0) {
+        if ((int) $request->input(Columns::page, 1) === 0) {
             $this->addSuccessResultKeyValue(Keys::DATA, $transformed);
             return $this->sendSuccessResult();
         }
