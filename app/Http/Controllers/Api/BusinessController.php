@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Constants\Columns;
+use App\Constants\Enums;
 use App\Constants\Keys;
 use App\Constants\Messages;
 use App\Constants\Tables;
@@ -34,6 +35,18 @@ class BusinessController extends BaseController
 
         // Base query
         $query = Business::where(Columns::user_id, $userId)
+        ->withSum(
+            ['transactions as total_income' => function ($q) {
+                $q->where(Columns::transaction_type, Enums::INCOME);
+            }],
+            Columns::amount
+        )
+        ->withSum(
+            ['transactions as total_expense' => function ($q) {
+                $q->where(Columns::transaction_type, Enums::EXPENSE);
+            }],
+            Columns::amount
+        )
             ->orderByDesc(Columns::id);
 
         // page = 0 → fetch all (no pagination)
@@ -61,6 +74,13 @@ class BusinessController extends BaseController
                 Columns::currency => $business->currency,
                 Columns::created_at => $business->created_at,
                 Columns::updated_at => $business->updated_at,
+                // 👇 Aggregates
+            'total_income'         => (float) ($business->total_income ?? 0),
+            'total_expense'        => (float) ($business->total_expense ?? 0),
+            'net_balance'          => (float) (
+                ($business->total_income ?? 0) -
+                ($business->total_expense ?? 0)
+            ),
             ];
         });
 

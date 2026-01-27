@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Constants\Columns;
+use App\Constants\Enums;
 use App\Constants\Keys;
 use App\Constants\Messages;
 use App\Http\Controllers\BaseController;
@@ -23,8 +24,8 @@ class CustomerController extends BaseController
 
         $rules = [
             Columns::business_id => 'required|integer',
-            Columns::page        => 'nullable|integer|min:0',
-            Columns::limit       => 'nullable|integer|min:1|max:100',
+            Columns::page => 'nullable|integer|min:0',
+            Columns::limit => 'nullable|integer|min:1|max:100',
         ];
 
         $validator = Validator::make($request->all(), $rules);
@@ -43,6 +44,22 @@ class CustomerController extends BaseController
         }
 
         $query = Customer::where(Columns::business_id, $business->id)
+            ->withSum(
+                [
+                    'transactions as total_income' => function ($q) {
+                        $q->where(Columns::transaction_type, Enums::INCOME);
+                    }
+                ],
+                Columns::amount
+            )
+            ->withSum(
+                [
+                    'transactions as total_expense' => function ($q) {
+                        $q->where(Columns::transaction_type, Enums::EXPENSE);
+                    }
+                ],
+                Columns::amount
+            )
             ->orderByDesc(Columns::id);
 
         // page = 0 → fetch all
@@ -60,15 +77,22 @@ class CustomerController extends BaseController
 
         $transformed = $customers->map(function ($customer) {
             return [
-                Columns::id              => $customer->id,
-                Columns::business_id     => $customer->business_id,
-                Columns::name            => $customer->name,
-                Columns::phone           => $customer->phone,
-                Columns::email           => $customer->email,
-                Columns::address         => $customer->address,
+                Columns::id => $customer->id,
+                Columns::business_id => $customer->business_id,
+                Columns::name => $customer->name,
+                Columns::phone => $customer->phone,
+                Columns::email => $customer->email,
+                Columns::address => $customer->address,
                 Columns::opening_balance => $customer->opening_balance,
-                Columns::created_at      => $customer->created_at,
-                Columns::updated_at      => $customer->updated_at,
+                Columns::created_at => $customer->created_at,
+                Columns::updated_at => $customer->updated_at,
+                // 👇 Aggregated totals
+                'total_income' => (float) ($customer->total_income ?? 0),
+                'total_expense' => (float) ($customer->total_expense ?? 0),
+                'net_balance' => (float) (
+                    ($customer->total_income ?? 0) -
+                    ($customer->total_expense ?? 0)
+                ),
             ];
         });
 
@@ -90,11 +114,11 @@ class CustomerController extends BaseController
     public function store(Request $request)
     {
         $rules = [
-            Columns::business_id     => 'required|integer',
-            Columns::name            => 'required|string|max:255',
-            Columns::phone           => 'required|string|max:15',
-            Columns::email           => 'nullable|email',
-            Columns::address         => 'nullable|string',
+            Columns::business_id => 'required|integer',
+            Columns::name => 'required|string|max:255',
+            Columns::phone => 'required|string|max:15',
+            Columns::email => 'nullable|email',
+            Columns::address => 'nullable|string',
             Columns::opening_balance => 'nullable|numeric',
         ];
 
@@ -114,11 +138,11 @@ class CustomerController extends BaseController
         }
 
         $customer = Customer::create([
-            Columns::business_id     => $request->business_id,
-            Columns::name            => $request->name,
-            Columns::phone           => $request->phone,
-            Columns::email           => $request->email,
-            Columns::address         => $request->address,
+            Columns::business_id => $request->business_id,
+            Columns::name => $request->name,
+            Columns::phone => $request->phone,
+            Columns::email => $request->email,
+            Columns::address => $request->address,
             Columns::opening_balance => $request->opening_balance ?? 0,
         ]);
 
@@ -150,10 +174,10 @@ class CustomerController extends BaseController
         }
 
         $rules = [
-            Columns::name            => 'required|string|max:255',
-            Columns::phone           => 'required|string|max:15',
-            Columns::email           => 'nullable|email',
-            Columns::address         => 'nullable|string',
+            Columns::name => 'required|string|max:255',
+            Columns::phone => 'required|string|max:15',
+            Columns::email => 'nullable|email',
+            Columns::address => 'nullable|string',
             Columns::opening_balance => 'nullable|numeric',
         ];
 
